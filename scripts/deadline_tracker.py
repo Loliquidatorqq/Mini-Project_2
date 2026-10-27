@@ -47,7 +47,26 @@ def add_task(tasks, title, due_date):
     return task_id
 
 
-def show_tasks(tasks, include_done=False):
+def days_until(task, today=None):
+    """Return the number of days until the assignment is due."""
+    if today is None:
+        today = date.today()
+    return (date.fromisoformat(task["due"]) - today).days
+
+
+def task_status(task, today=None):
+    """Create a readable status for a task."""
+    if task["done"]:
+        return "Done"
+    days = days_until(task, today)
+    if days < 0:
+        return f"Overdue {-days}d"
+    if days == 0:
+        return "Due today"
+    return f"In {days}d"
+
+
+def show_tasks(tasks, include_done=False, today=None):
     """Print saved assignments in order of their deadlines."""
     visible = [task for task in tasks if include_done or not task["done"]]
     if not visible:
@@ -56,8 +75,24 @@ def show_tasks(tasks, include_done=False):
     print(f"{'ID':<5} {'Due date':<12} {'Status':<14} Title")
     print("-" * 62)
     for task in sorted(visible, key=lambda item: item["due"]):
-        status = "Done" if task["done"] else "Pending"
-        print(f"{task['id']:<5} {task['due']:<12} {status:<14} {task['title']}")
+        print(f"{task['id']:<5} {task['due']:<12} "
+              f"{task_status(task, today):<14} {task['title']}")
+
+
+def mark_done(tasks, task_id):
+    """Mark an assignment as completed; return True if it exists."""
+    for task in tasks:
+        if task["id"] == task_id:
+            task["done"] = True
+            return True
+    return False
+
+
+def show_upcoming(tasks, days=7, today=None):
+    """Show unfinished assignments due within the chosen number of days."""
+    upcoming = [task for task in tasks if not task["done"]
+                and 0 <= days_until(task, today) <= days]
+    show_tasks(upcoming, today=today)
 
 
 def main(argv=None):
@@ -73,6 +108,13 @@ def main(argv=None):
     list_parser = commands.add_parser("list", help="list assignments")
     list_parser.add_argument("--all", action="store_true", help="include finished tasks")
 
+    done_parser = commands.add_parser("done", help="mark an assignment as finished")
+    done_parser.add_argument("id", type=int, help="assignment ID from the list")
+
+    upcoming_parser = commands.add_parser("upcoming", help="show the next deadlines")
+    upcoming_parser.add_argument("--days", type=int, default=7,
+                                 help="number of days to look ahead (default: 7)")
+
     args = parser.parse_args(argv)
     try:
         tasks = load_tasks(args.data_file)
@@ -82,6 +124,15 @@ def main(argv=None):
             print(f"Added assignment #{task_id}: {args.title.strip()}")
         elif args.command == "list":
             show_tasks(tasks, include_done=args.all)
+        elif args.command == "done":
+            if not mark_done(tasks, args.id):
+                raise ValueError(f"Assignment #{args.id} was not found")
+            save_tasks(args.data_file, tasks)
+            print(f"Assignment #{args.id} marked as done.")
+        elif args.command == "upcoming":
+            if args.days < 0:
+                raise ValueError("--days must be zero or greater")
+            show_upcoming(tasks, days=args.days)
     except (OSError, json.JSONDecodeError, ValueError) as error:
         parser.exit(1, f"Error: {error}\n")
 
