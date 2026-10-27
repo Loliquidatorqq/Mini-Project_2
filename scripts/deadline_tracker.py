@@ -89,9 +89,9 @@ def mark_done(tasks, task_id):
 
 
 def show_upcoming(tasks, days=7, today=None):
-    """Show unfinished assignments due within the chosen number of days."""
+    """Show overdue and soon-due assignments within the chosen number of days."""
     upcoming = [task for task in tasks if not task["done"]
-                and 0 <= days_until(task, today) <= days]
+                and days_until(task, today) <= days]
     show_tasks(upcoming, today=today)
 
 
