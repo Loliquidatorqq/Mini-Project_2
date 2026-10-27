@@ -75,6 +75,41 @@ class DeadlineTrackerTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("zero or greater", result.stderr)
 
+    def test_json_with_wrong_structure_is_rejected(self):
+        for payload in ('{}', 'null', '[42]', '[{"id": 1}]'):
+            with self.subTest(payload=payload):
+                self.data_file.write_text(payload, encoding="utf-8")
+                result = self.run_tracker("add", "Test", "2026-12-01")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Invalid task data", result.stderr)
+                self.assertNotIn("Traceback", result.stderr)
+                self.assertEqual(self.data_file.read_text(encoding="utf-8"), payload)
+
+    def test_invalid_task_fields_are_rejected(self):
+        records = [
+            {"id": 1, "title": "Task", "due": "2026-02-30", "done": False},
+            {"id": True, "title": "Task", "due": "2026-12-01", "done": False},
+            {"id": 1, "title": " ", "due": "2026-12-01", "done": False},
+            {"id": 1, "title": "Task", "due": "2026-12-01", "done": "no"},
+        ]
+        for record in records:
+            with self.subTest(record=record):
+                payload = json.dumps([record])
+                self.data_file.write_text(payload, encoding="utf-8")
+                result = self.run_tracker("list")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Invalid task data", result.stderr)
+                self.assertNotIn("Traceback", result.stderr)
+                self.assertEqual(self.data_file.read_text(encoding="utf-8"), payload)
+
+    def test_duplicate_ids_are_rejected(self):
+        record = {"id": 1, "title": "Task", "due": "2026-12-01", "done": False}
+        payload = json.dumps([record, record])
+        self.data_file.write_text(payload, encoding="utf-8")
+        result = self.run_tracker("list")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Invalid task data", result.stderr)
+
     def test_invalid_json_is_not_overwritten(self):
         self.data_file.write_text("broken JSON", encoding="utf-8")
         result = self.run_tracker("add", "Task", "2026-12-01")
