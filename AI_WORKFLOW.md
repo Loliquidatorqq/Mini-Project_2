@@ -40,15 +40,28 @@ corrected to:
 days_until(task, today) <= days
 ```
 
-The tests were run again after the correction: **8 passed, 0 failed**.
+The initial tests were run again after the correction: **8 passed, 0 failed**.
 
-## 4. Documentation and version control
+## 4. Additional review and debugging
+
+During a second review, the original eight tests passed. Manual checks then
+found another problem: `tasks.json` could contain well-formed JSON with the
+wrong structure, such as `{}` or `[42]`. Some commands crashed with a Python
+traceback rather than giving a clear error. Three more automated tests were
+added to reproduce these cases, including invalid fields and duplicate IDs.
+The JSON loading function was updated to validate saved records first and
+leave the file unchanged when they are not valid.
+
+After the fix, **11 tests passed, 0 failed**. This second debugging cycle is
+also recorded in Git as separate test, fix, and documentation commits.
+
+## 5. Documentation and version control
 
 The README explains the everyday problem, software requirements, exact
 commands, example output, data storage, and tests. Git commits preserve the
 steps of implementation, testing, debugging, and documentation.
 
-## 5. What to check yourself before submission
+## 6. What to check yourself before submission
 
 Run the script locally, add one of your own deadlines, inspect `list` and
 `upcoming`, mark the task completed, and check that `tasks.json` changes.

@@ -97,8 +97,8 @@ python scripts/deadline_tracker.py --data-file example.json add "Exam" 2026-12-1
 - Assignment titles cannot be blank.
 - An unknown task ID causes an error instead of modifying another task.
 - A negative `--days` value is rejected.
-- If the JSON file is unreadable or contains invalid JSON, the program reports
-  an error instead of silently replacing the file.
+- If the JSON file is unreadable, contains invalid JSON, or has an invalid
+  task structure, the program reports an error without overwriting the file.
 
 ## How to test
 
@@ -109,7 +109,7 @@ python -m unittest discover -s tests -v
 ```
 
 The tests check saving/loading, validation, marking work as finished,
-upcoming/overdue deadlines, and error handling.
+upcoming/overdue deadlines, invalid saved records, and error handling.
 
 ## Project files
 
