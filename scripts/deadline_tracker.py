@@ -24,7 +24,36 @@ def load_tasks(file_path):
     if not file_path.exists():
         return []
     with file_path.open("r", encoding="utf-8") as file:
-        return json.load(file)
+        tasks = json.load(file)
+
+    # A file may contain valid JSON that is not valid task data.
+    # Check the structure before using it or writing changes.
+    if not isinstance(tasks, list):
+        raise ValueError("Invalid task data: expected a list of assignments")
+
+    seen_ids = set()
+    for task in tasks:
+        if not isinstance(task, dict):
+            raise ValueError("Invalid task data: each assignment must be an object")
+        if not all(key in task for key in ("id", "title", "due", "done")):
+            raise ValueError("Invalid task data: an assignment is missing fields")
+        if type(task["id"]) is not int or task["id"] <= 0 or task["id"] in seen_ids:
+            raise ValueError("Invalid task data: task IDs must be unique positive integers")
+        seen_ids.add(task["id"])
+        if not isinstance(task["title"], str) or not task["title"].strip():
+            raise ValueError("Invalid task data: assignment title is missing")
+        if type(task["done"]) is not bool:
+            raise ValueError("Invalid task data: completion status must be true or false")
+        due = task["due"]
+        if not isinstance(due, str) or len(due) != 10:
+            raise ValueError("Invalid task data: deadline must be YYYY-MM-DD")
+        try:
+            if date.fromisoformat(due).isoformat() != due:
+                raise ValueError
+        except ValueError:
+            raise ValueError("Invalid task data: deadline must be YYYY-MM-DD") from None
+
+    return tasks
 
 
 def save_tasks(file_path, tasks):
@@ -133,7 +162,7 @@ def main(argv=None):
             if args.days < 0:
                 raise ValueError("--days must be zero or greater")
             show_upcoming(tasks, days=args.days)
-    except (OSError, json.JSONDecodeError, ValueError) as error:
+    except (OSError, UnicodeError, ValueError) as error:
         parser.exit(1, f"Error: {error}\n")
 
 
